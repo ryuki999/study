@@ -1,0 +1,17 @@
+## odd_tri
+<class 'numpy.ndarray'>
+dataset length: 127588
+features per example: 64
+number of digits: 7
+
+Training...
+3099.280202150345
+(�덷����, �덷���U):(0.008430206, 0.006606191)
+�j���[�����g�p��:1.5363760566988303
+
+## odd_penta<class 'numpy.ndarray'>
+dataset length: 127588
+features per example: 1024
+number of digits: 7
+
+Training...
