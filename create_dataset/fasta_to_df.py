@@ -10,7 +10,7 @@ def fasta_to_df(
     header_columns: list,
     feature_columns: list,
 ) -> tuple:
-    with open(f"./{filename}", encoding="utf-8") as f:
+    with open(f"{filename}", encoding="utf-8") as f:
         data = f.read().split("\n")
         header = [data[i] for i in range(0, len(data) - 1, 2)]
         header1 = [line.split("|") for line in header]
@@ -40,7 +40,7 @@ def blsom_outfile_to_df(
     filename: str,
     header_columns: list = None,
 ):
-    with open(f"./{filename}", encoding="utf-8") as f:
+    with open(f"{filename}", encoding="utf-8") as f:
         data = f.read().split("\n")
         header = []
         max_x, max_y = map(int, data[0].split())

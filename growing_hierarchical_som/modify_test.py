@@ -18,7 +18,7 @@ parent_dir = str(pathlib.Path(__file__).parent.parent.resolve())
 # モジュール検索パスに，ひとつ上の階層の絶対パスを追加
 sys.path.append("..")
 
-from fasta2df import all_data_df_to_arange_df, fasta_to_df
+from create_dataset.fasta_to_df import all_data_df_to_arange_df, fasta_to_df
 
 N = 5
 BASE = ["A", "T", "G", "C"]
@@ -261,28 +261,9 @@ def dispersion_rate(ghsom, dataset):
 
 
 if __name__ == "__main__":
-    digits = load_digits()
-
-    # data = digits.data
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(digits.target))
-    # labels = digits.target
-
-    # df0 = read_data("sample_data/Bacteria.frq")
-    # df0["label"] = 0
-    # df1 = read_data("sample_data/Eukaryote.frq")
-    # df1["label"] = 1
-    # df2 = read_data("sample_data/Virus.frq")
-    # df2["label"] = 2
-    # df_concat = pd.concat([df0, df1, df2])
-
-    # labels = np.array(df_concat["label"])
-    # data = np.array(df_concat.drop(columns=["label"]))
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(labels))
-
-    header, feature = fasta_to_df(
-        "../all_data_odd_penta", N, ALL_DATA_HEADER_COLUMNS, N_BASE
+    input_data = sys.argv[1]
+    model_output = sys.argv[2]
+    header, feature = fasta_to_df(input_data, N, ALL_DATA_HEADER_COLUMNS, N_BASE
     )
     df = all_data_df_to_arange_df(header, feature)
     df1 = df[df["clade"] != "O"]
@@ -294,7 +275,8 @@ if __name__ == "__main__":
     n_samples, n_features = data.shape
     n_digits = len(np.unique(labels))
 
-    print(type(data))
+    print(f"input_data:{input_data}")
+    print(f"model_output:{model_output}")
     print("dataset length: {}".format(n_samples))
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
@@ -321,9 +303,9 @@ if __name__ == "__main__":
     t = time.time() - start
 
     print(t)
-    f = open("outputs/add_data_odd_penta_zero_unit.pkl", "wb")
+    f = open(model_output, "wb")
     pickle.dump(zero_unit, f)
-    f = open("outputs/add_data_odd_penta_zero_unit.pkl", "rb")
+    f = open(model_output, "rb")
     zerp_unit = pickle.load(f)
     f.close
 
