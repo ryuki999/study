@@ -3,12 +3,12 @@ import multiprocessing
 import sys
 from collections import defaultdict
 from multiprocessing import Pool
-
+import time
 import numpy as np
 import pandas
 from tqdm import tqdm
 
-N = 8
+N = 10
 BASE = ["A", "T", "G", "C"]
 N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
 
@@ -49,6 +49,11 @@ def main():
     filename = sys.argv[1]
     output_filename = sys.argv[2]
 
+    print(f"create {N} continuous base odd ratio\n")
+    print(f"input_data:{filename}\n")
+    print(f"output_filename:{output_filename}\n")
+    start = time.time()
+   
     with open(filename, "r", encoding="utf-8") as r:
         for line in tqdm(r.readlines()):
             if ">" in line:
@@ -67,6 +72,9 @@ def main():
             w.write(line)
     w.close()
 
+    t = time.time() - start
+
+    print(f"Elapsed time:{t} s")
 
 if __name__ in "__main__":
     main()
