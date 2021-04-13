@@ -1,19 +1,67 @@
+import itertools
+import pathlib
 import pickle
-
-# from sklearn.datasets import fetch_mldata
-# from sklearn.datasets import fetch_openml
-from collections import OrderedDict
+import sys
+import time
+from collections import OrderedDict, defaultdict
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.datasets import load_digits
-#from tensorflow.keras.datasets import mnist  # tf.kerasを使う場合（通常）
-import sys
-
+from tqdm import tqdm
 from GHSOM import GHSOM
 
+# ひとつ上の階層の絶対パスを取得
+parent_dir = str(pathlib.Path(__file__).parent.parent.resolve())
+
+# モジュール検索パスに，ひとつ上の階層の絶対パスを追加
+sys.path.append("..")
+
+from create_dataset.fasta_to_df import all_data_df_to_arange_df, fasta_to_df
+
+N = 5
+BASE = ["A", "T", "G", "C"]
+N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
+DATA_COLUMNS = ["year", "month", "day"]
+CLADE_COLUMNS = ["clade", "head2"]
+
+JAPAN_HEADER_COLUMNS = ["head", "ID", "date"]
+ALL_DATA_HEADER_COLUMNS = [
+    "head",
+    "id",
+    "continent",
+    "country",
+    "city",
+    "host",
+    "clade_head",
+    "date",
+]
+
 data_shape = 12
+
+
+color = [
+    "bright red",
+    "pure orange",
+    "dark violet",
+    "very soft orange",
+    "lime",
+    "blue",
+    "fuchsia",
+]
+rgb = {
+    "bright red": [229, 43, 80],
+    "pure orange": [255, 191, 0],
+    "dark violet": [75, 0, 130],
+    "very soft orange": [251, 206, 177],
+    # 保留
+    "lime": [0, 255, 0],
+    "blue": [0, 0, 255],
+    "fuchsia": [255, 0, 255],
+    "black": [0, 0, 0],
+    "white": [255, 255, 255],
+}
 
 
 def read_data(filename):
@@ -30,59 +78,35 @@ def read_data(filename):
     return df
 
 
-def __gmap_to_matrix(gmap):
-    gmap = gmap[0]
+def __gmap_to_matrix(gmap, dataset, labels):
+    g = gmap
+    gmap = gmap.weights_map[0]
     # マップの横幅
     map_row = data_shape * gmap.shape[0]
     # マップの縦幅
     map_col = data_shape * gmap.shape[1]
     # 各要素に表示させる画像の初期化
-    _image = np.empty(shape=(map_row, map_col), dtype=np.float32)
+    _image = np.empty(shape=(map_row, map_col, 3), dtype=np.int32)
+    mapping = [[list() for _ in range(gmap.shape[1])] for _ in range(gmap.shape[0])]
+    for idx, label in enumerate(labels):
+        winner_neuron = g.winner_neuron(dataset[idx])[0][0]
+        r, c = winner_neuron.position
+        mapping[r][c].append(label)
+
     for i in range(0, map_row, data_shape):
         for j in range(0, map_col, data_shape):
-            # 各要素に表示させるニューロンの取得
-            neuron = gmap[i // data_shape, j // data_shape]
-            # ニューロンを変形させて画像として表示
-            _image[i : (i + data_shape), j : (j + data_shape)] = np.reshape(
-                neuron, newshape=(data_shape, data_shape)
-            )
+            map_label = list(set(mapping[i // data_shape][j // data_shape]))
+            if len(map_label) > 1:
+                _img = np.full((data_shape, data_shape, 3), rgb["black"])
+            elif len(map_label) == 0:
+                _img = np.full((data_shape, data_shape, 3), rgb["white"])
+            else:
+                _img = np.full((data_shape, data_shape, 3), rgb[color[map_label[0]]])
+            _image[i : (i + data_shape), j : (j + data_shape)] = _img
     return _image
 
 
-def __plot_child(e, gmap, level):
-    if e.inaxes is not None:
-        coords = (int(e.ydata // data_shape), int(e.xdata // data_shape))
-        neuron = gmap.neurons[coords]
-        if neuron.child_map is not None:
-            interactive_plot(neuron.child_map, num=str(coords), level=level + 1)
-
-
-def interactive_plot(gmap, num="root", level=1):
-    _num = "level {} -- parent pos {}".format(level, num)
-    fig, ax = plt.subplots(num=_num)
-    ax.imshow(__gmap_to_matrix(gmap.weights_map), cmap="bone_r", interpolation="sinc")
-    fig.canvas.mpl_connect(
-        "button_press_event", lambda event: __plot_child(event, gmap, level)
-    )
-    plt.axis("off")
-    fig.show()
-
-
 def __plot_child_with_labels(e, gmap, level, data, labels, associations):
-    """
-    gsom.neurons:
-    {(0,0):
-    position (0, 0) -- map dimensions (3, 3, 64) -- input dataset 197 element(s) -- level 0
-        position (0, 0) -- map dimensions (4, 2, 64) -- input dataset 40 element(s) -- level 1
-            position (0, 0) -- map dimensions (5, 2, 64) -- input dataset 1 element(s) -- level 2
-                position (0, 0) -- map dimensions (3, 2, 64) -- input dataset 1 element(s) -- level 3
-                position (0, 1) -- map dimensions (3, 2, 64) -- input dataset 0 element(s) -- level 3
-                position (2, 0) -- map dimensions (3, 2, 64) -- input dataset 0 element(s) -- level 3
-                position (2, 1) -- map dimensions (3, 2, 64) -- input dataset 0 element(s) -- level 3
-                position (1, 0) -- map dimensions (3, 2, 64) -- input dataset 0 element(s) -- level 3
-                position (1, 1) -- map dimensions (3, 2, 64) -- input dataset 0 element(s) -- level 3
-            position (0, 1) -- map dimensions (5, 2, 64) -- input dataset 7 element(s) -- level 2
-    """
     # マウスクリックの範囲がaxes内の時
     if e.inaxes is not None:
         # coords:座標(0,0)など
@@ -90,6 +114,7 @@ def __plot_child_with_labels(e, gmap, level, data, labels, associations):
         coords = (int(e.ydata // data_shape), int(e.xdata // data_shape))
         # 指定座標のみ抽出
         neuron = gmap.neurons[coords]
+        # print(np.array(associations).shape)
         if neuron.child_map is not None:
             # 指定した座標以下のデータとラベルのindexを取得
             assc = associations[coords[0]][coords[1]]
@@ -111,8 +136,10 @@ def interactive_plot_with_labels(gmap, dataset, labels, num="root", level=1):
     laeles: 現在のmap以下のlabel
     num: 座標
     level: 階層レベル
-    """
 
+    TODO:
+    __gmap_to_matrixにその階層のlabelのデータも渡して、そのラベルごとの色で表示させる
+    """
     colors = [
         "#E52B50",
         "#FFBF00",
@@ -125,6 +152,7 @@ def interactive_plot_with_labels(gmap, dataset, labels, num="root", level=1):
         "#CD7F32",
         "#89CFF0",
     ]
+
     sizes = np.arange(0, 60, 6) + 0.5
 
     # mapサイズ[1]:縦,[0]:横のリスト(ラベルを格納)
@@ -135,7 +163,12 @@ def interactive_plot_with_labels(gmap, dataset, labels, num="root", level=1):
     _num = "level {} -- parent pos {}".format(level, num)
     fig, ax = plt.subplots(num=_num)
     # 一階層分の参照ベクトルをプロット gmap.weights_map:(tate, yoko, weights)
-    ax.imshow(__gmap_to_matrix(gmap.weights_map), cmap="bone_r", interpolation="sinc")
+    ax.imshow(
+        __gmap_to_matrix(gmap, dataset, labels),
+        # ax.imshow(__gmap_to_matrix(gmap.weights_map, dataset, labels),
+        cmap="bone_r",
+        interpolation="sinc",
+    )
     # マウスをクリックしたとき関数を実行
     fig.canvas.mpl_connect(
         "button_press_event",
@@ -145,7 +178,7 @@ def interactive_plot_with_labels(gmap, dataset, labels, num="root", level=1):
     )
     plt.axis("off")
 
-    for idx, label in enumerate(labels):
+    for idx, label in tqdm(enumerate(labels)):
         winner_neuron = gmap.winner_neuron(dataset[idx])[0][0]
         r, c = winner_neuron.position
         mapping[r][c].append(idx)
@@ -228,18 +261,12 @@ def dispersion_rate(ghsom, dataset):
 
 
 if __name__ == "__main__":
-    digits = load_digits()
-
-    # data = digits.data
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(digits.target))
-    # labels = digits.target
     folder = sys.argv[1]
-    df0 = read_data(f"{folder}/Bacteria.frq")
+    df0 = read_data(f"{folder}Bacteria.frq")
     df0["label"] = 0
-    df1 = read_data(f"{folder}/Eukaryote.frq")
+    df1 = read_data(f"{folder}Eukaryote.frq")
     df1["label"] = 1
-    df2 = read_data(f"{folder}/Virus.frq")
+    df2 = read_data(f"{folder}Virus.frq")
     df2["label"] = 2
     df_concat = pd.concat([df0, df1, df2])
 
@@ -248,29 +275,17 @@ if __name__ == "__main__":
     n_samples, n_features = data.shape
     n_digits = len(np.unique(labels))
 
-    # (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
-
-    # mnist = fetch_mldata('MNIST original') # sklearn0.19.1以前
-    # data = mnist.data
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(mnist.target))
-    # labels = mnist.target
-
-    # data = train_images.reshape(60000,-1)
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(train_labels))
-    # labels = train_labels
-
-    print(type(data))
     print("dataset length: {}".format(n_samples))
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
+    start = time.time()
+
     ghsom = GHSOM(
         input_dataset=data,
-        t1=0.1,
+        t1=0.0001,
         t2=0.0001,
         learning_rate=0.15,
-        decay=0.95,
+        decay=0.5,
         gaussian_sigma=1.5,
     )
 
@@ -280,19 +295,17 @@ if __name__ == "__main__":
         dataset_percentage=0.50,
         min_dataset_size=30,
         seed=0,
-        grow_maxiter=10,
+        grow_maxiter=30,
     )
 
-    # f = open('ghsom.pkl','wb')
-    # pickle.dump(zero_unit,f)
-    # f = open('ghsom.pkl','rb')
-    # zerp_unit = pickle.load(f)
-    # f.close
+    t = time.time() - start
 
-    # print(zero_unit)
+    print(t)
+
+    print(zero_unit)
     # 平均と標準偏差
     print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
     print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
-    interactive_plot(zero_unit.child_map)
-    # interactive_plot_with_labels(zero_unit.child_map, data, labels)
+    # interactive_plot(zero_unit.child_map)
+    interactive_plot_with_labels(zero_unit.child_map, data, labels)
     plt.show()
