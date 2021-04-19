@@ -68,7 +68,7 @@ class GHSOM:
                     active_dataset += len(_neuron.input_dataset)
 
             bar.update(bar.max_value - active_dataset)
-
+        pool.close()
         return zero_unit
 
     def __init_zero_unit(self, seed):

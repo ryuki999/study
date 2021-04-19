@@ -1,24 +1,27 @@
+"""
+param_test.py
+param_test用のプログラム
+"""
+
+import os
 import itertools
-import pathlib
 import pickle
 import sys
 import time
-from collections import OrderedDict, defaultdict
-
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-from sklearn.datasets import load_digits
 from tqdm import tqdm
+from matplotlib import pyplot as plt
+from ghsom_describe import *
+from color_plot import interactive_plot_with_labels, image_plot_with_labels_save
+import gc
 from GHSOM import GHSOM
-
-# ひとつ上の階層の絶対パスを取得
-parent_dir = str(pathlib.Path(__file__).parent.parent.resolve())
 
 # モジュール検索パスに，ひとつ上の階層の絶対パスを追加
 sys.path.append("..")
-
 from create_dataset.fasta_to_df import all_data_df_to_arange_df, fasta_to_df
+
 
 N = 5
 BASE = ["A", "T", "G", "C"]
@@ -38,226 +41,18 @@ ALL_DATA_HEADER_COLUMNS = [
     "date",
 ]
 
-data_shape = 12
-
-
-color = [
-    "bright red",
-    "pure orange",
-    "dark violet",
-    "very soft orange",
-    "lime",
-    "blue",
-    "fuchsia",
-]
-rgb = {
-    "bright red": [229, 43, 80],
-    "pure orange": [255, 191, 0],
-    "dark violet": [75, 0, 130],
-    "very soft orange": [251, 206, 177],
-    # 保留
-    "lime": [0, 255, 0],
-    "blue": [0, 0, 255],
-    "fuchsia": [255, 0, 255],
-    "black": [0, 0, 0],
-    "white": [255, 255, 255],
-}
-
-
 def read_data(filename):
     with open(filename) as f:
-        data = f.read().split("\n")
-        df = []
-        for i in range(2, len(data), 3):
-            one_data = [int(float(n)) for n in data[i].split()]
+        sample_genome = f.read().split("\n")
+        sample_genome_array = []
+        for i in range(2, len(sample_genome), 3):
+            one_data = [int(float(n)) for n in sample_genome[i].split()]
             while len(one_data) != 144:
                 one_data.append(0)
-            df.append(one_data)
-        df = pd.DataFrame(df)
+            sample_genome_array.append(one_data)
+        sample_genome_df = pd.DataFrame(sample_genome_array)
     f.close()
-    return df
-
-
-def __gmap_to_matrix(gmap, dataset, labels):
-    g = gmap
-    gmap = gmap.weights_map[0]
-    # マップの横幅
-    map_row = data_shape * gmap.shape[0]
-    # マップの縦幅
-    map_col = data_shape * gmap.shape[1]
-    # 各要素に表示させる画像の初期化
-    _image = np.empty(shape=(map_row, map_col, 3), dtype=np.int32)
-    mapping = [[list() for _ in range(gmap.shape[1])] for _ in range(gmap.shape[0])]
-    for idx, label in enumerate(labels):
-        winner_neuron = g.winner_neuron(dataset[idx])[0][0]
-        r, c = winner_neuron.position
-        mapping[r][c].append(label)
-
-    for i in range(0, map_row, data_shape):
-        for j in range(0, map_col, data_shape):
-            map_label = list(set(mapping[i // data_shape][j // data_shape]))
-            if len(map_label) > 1:
-                _img = np.full((data_shape, data_shape, 3), rgb["black"])
-            elif len(map_label) == 0:
-                _img = np.full((data_shape, data_shape, 3), rgb["white"])
-            else:
-                _img = np.full((data_shape, data_shape, 3), rgb[color[map_label[0]]])
-            _image[i : (i + data_shape), j : (j + data_shape)] = _img
-    return _image
-
-
-def __plot_child_with_labels(e, gmap, level, data, labels, associations):
-    # マウスクリックの範囲がaxes内の時
-    if e.inaxes is not None:
-        # coords:座標(0,0)など
-        # 2x3のdata_shape8のときe.ydata(0~16),e.xdata(0~32)
-        coords = (int(e.ydata // data_shape), int(e.xdata // data_shape))
-        # 指定座標のみ抽出
-        neuron = gmap.neurons[coords]
-        # print(np.array(associations).shape)
-        if neuron.child_map is not None:
-            # 指定した座標以下のデータとラベルのindexを取得
-            assc = associations[coords[0]][coords[1]]
-            interactive_plot_with_labels(
-                neuron.child_map,
-                dataset=data[assc],
-                labels=labels[assc],
-                num=str(coords),
-                level=level + 1,
-            )
-
-
-def interactive_plot_with_labels(gmap, dataset, labels, num="root", level=1):
-    """GHSOMのマップをラベルとインタラクティブなプロット
-
-    Args:
-    gmap (Neuron): Neuronオブジェクト
-    dataset(numpy): 現在のmap以下のdataset
-    laeles: 現在のmap以下のlabel
-    num: 座標
-    level: 階層レベル
-
-    TODO:
-    __gmap_to_matrixにその階層のlabelのデータも渡して、そのラベルごとの色で表示させる
-    """
-    colors = [
-        "#E52B50",
-        "#FFBF00",
-        "#4B0082",
-        "#FBCEB1",
-        "#7FFFD4",
-        "#007FFF",
-        "#00FF00",
-        "#9966CC",
-        "#CD7F32",
-        "#89CFF0",
-    ]
-
-    sizes = np.arange(0, 60, 6) + 0.5
-
-    # mapサイズ[1]:縦,[0]:横のリスト(ラベルを格納)
-    mapping = [
-        [list() for _ in range(gmap.map_shape()[1])] for _ in range(gmap.map_shape()[0])
-    ]
-
-    _num = "level {} -- parent pos {}".format(level, num)
-    fig, ax = plt.subplots(num=_num)
-    # 一階層分の参照ベクトルをプロット gmap.weights_map:(tate, yoko, weights)
-    ax.imshow(
-        __gmap_to_matrix(gmap, dataset, labels),
-        # ax.imshow(__gmap_to_matrix(gmap.weights_map, dataset, labels),
-        cmap="bone_r",
-        interpolation="sinc",
-    )
-    # マウスをクリックしたとき関数を実行
-    fig.canvas.mpl_connect(
-        "button_press_event",
-        lambda event: __plot_child_with_labels(
-            event, gmap, level, dataset, labels, mapping
-        ),
-    )
-    plt.axis("off")
-
-    for idx, label in tqdm(enumerate(labels)):
-        winner_neuron = gmap.winner_neuron(dataset[idx])[0][0]
-        r, c = winner_neuron.position
-        mapping[r][c].append(idx)
-
-        ax.plot(
-            c * data_shape + data_shape / 2,
-            r * data_shape + data_shape / 2,
-            "o",
-            markerfacecolor="None",
-            markeredgecolor=colors[label],
-            markersize=sizes[label],
-            markeredgewidth=0.5,
-            label=label,
-        )
-    legend_handles, legend_labels = plt.gca().get_legend_handles_labels()
-    by_label = OrderedDict(zip(legend_labels, legend_handles))
-    plt.legend(
-        by_label.values(),
-        by_label.keys(),
-        loc="center left",
-        bbox_to_anchor=(1.1, 0.5),
-        borderaxespad=0.0,
-        mode="expand",
-        labelspacing=int((gmap.map_shape()[0] / 9) * data_shape),
-    )
-    fig.show()
-
-
-def mean_data_centroid_activation(ghsom, dataset):
-    """
-    データとGHSOMのニューロンの総誤差の平均と標準偏差を返す
-    """
-    distances = list()
-
-    for data in dataset:
-        _neuron = ghsom
-        while _neuron.child_map is not None:
-            _gsom = _neuron.child_map
-            _neuron = _gsom.winner_neuron(data)[0][0]
-        distances.append(_neuron.activation(data))
-
-    distances = np.asarray(a=distances, dtype=np.float32)
-    return distances.mean(), distances.std()
-
-
-def __number_of_neurons(root):
-    """
-    GHSOMのneurons数を返す
-    """
-    r, c = root.child_map.weights_map[0].shape[0:2]
-    total_neurons = r * c
-    for neuron in root.child_map.neurons.values():
-        if neuron.child_map is not None:
-            total_neurons += __number_of_neurons(neuron)
-    return total_neurons
-
-
-def dispersion_rate(ghsom, dataset):
-    """
-    GHSOMの全ニューロンの中で使用されているニューロンの割合を返す
-    """
-    used_neurons = dict()
-    for data in dataset:
-        gsom_reference = ""
-        neuron_reference = ""
-        _neuron = ghsom
-        while _neuron.child_map is not None:
-            _gsom = _neuron.child_map
-            _neuron = _gsom.winner_neuron(data)[0][0]
-
-            gsom_reference = str(_gsom)
-            neuron_reference = str(_neuron)
-
-        used_neurons[
-            "{}-{}-{}".format(gsom_reference, neuron_reference, _neuron.position)
-        ] = True
-    used_neurons = len(used_neurons)
-
-    return __number_of_neurons(ghsom) / used_neurons
+    return sample_genome_df
 
 
 if __name__ == "__main__":
@@ -278,34 +73,57 @@ if __name__ == "__main__":
     print("dataset length: {}".format(n_samples))
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
-    start = time.time()
+    t1 = [1, 0.1, 0.01, 0.001]
+    t2 = [1, 0.1, 0.01, 0.001]
+    gaussian_sigma = [2, 3, 4, 5]
+    grow_maxiter = [1, 5, 10, 15, 20]
+    epochs = [1,5,10,15]
+    lr = 0.15
+    decay = 0.95
 
-    ghsom = GHSOM(
-        input_dataset=data,
-        t1=0.0001,
-        t2=0.0001,
-        learning_rate=0.15,
-        decay=0.5,
-        gaussian_sigma=1.5,
-    )
+    for t1_i in t1:
+        for t2_i in t2:
+            for gau_i in gaussian_sigma:
+                for gr_i in grow_maxiter:
+                    for ep in epochs:
+                        start = time.time()
+                        dir = f"t1c{t1_i}-t2c{t2_i}-lr{lr}-decay{decay}-gau{gau_i}-ep{ep}-gr{t1_i}"
+                        path = f'./img/{dir}'
+                        if not os.path.exists(path):
+                            os.mkdir(path)
+                        print(dir)
+                        ghsom = GHSOM(
+                            input_dataset=data,
+                            t1=t1_i,
+                            t2=t2_i,
+                            learning_rate=lr,
+                            decay=decay,
+                            gaussian_sigma=gau_i,
+                        )
 
-    print("Training...")
-    zero_unit = ghsom.train(
-        epochs_number=15,
-        dataset_percentage=0.50,
-        min_dataset_size=30,
-        seed=0,
-        grow_maxiter=30,
-    )
+                        print("Training...")
+                        zero_unit = ghsom.train(
+                            epochs_number=ep,
+                            dataset_percentage=0.50,
+                            min_dataset_size=30,
+                            seed=0,
+                            grow_maxiter=gr_i,
+                        )
 
-    t = time.time() - start
+                        t = time.time() - start
 
-    print(t)
+                        print(f"Elapsed Time:{t}s")
 
-    print(zero_unit)
-    # 平均と標準偏差
-    print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
-    print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
-    # interactive_plot(zero_unit.child_map)
-    interactive_plot_with_labels(zero_unit.child_map, data, labels)
-    plt.show()
+                        # 平均と標準偏差
+                        print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
+                        print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
+                        print(f"マップの数:{number_of_maps(zero_unit)}")
+                        print(f"ニューロンの数:{number_of_neurons(zero_unit)}")
+                        print("\n")
+                        # print(zero_unit)
+                        # interactive_plot(zero_unit.child_map)
+                        # interactive_plot_with_labels(zero_unit.child_map, data, labels)
+                        image_plot_with_labels_save(zero_unit.child_map, data, labels, f"img/{dir}")
+                        # plt.show()
+                        del ghsom, zero_unit
+                        gc.collect()
