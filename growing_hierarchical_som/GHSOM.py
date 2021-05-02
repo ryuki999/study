@@ -34,7 +34,7 @@ class GHSOM:
             progressbar.Bar(),
             ' (', progressbar.Counter(format='%(value)02d/%(max_value)d'), ') ',
         ])
-        bar.update(0)
+        # bar.update(0)
         while not neuron_queue.empty():
             size = min(neuron_queue.qsize(), pool._processes)
             gmaps = dict()
@@ -67,7 +67,7 @@ class GHSOM:
 
                     active_dataset += len(_neuron.input_dataset)
 
-            bar.update(bar.max_value - active_dataset)
+            # bar.update(bar.max_value - active_dataset)
         pool.close()
         return zero_unit
 

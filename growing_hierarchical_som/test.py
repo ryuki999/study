@@ -3,17 +3,21 @@ test.py
 test用のプログラム
 """
 
-import sys
-import itertools
-import time
+
 from sklearn.datasets import load_digits
-from matplotlib import pyplot as plt
-import pandas as pd
-import numpy as np
+import os
+import itertools
 import pickle
+import sys
+import time
+from collections import OrderedDict
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
-from ghsom_describe import mean_data_centroid_activation, dispersion_rate
-from color_plot import interactive_plot_with_labels
+from matplotlib import pyplot as plt
+from ghsom_describe import *
+from color_plot import interactive_plot_with_labels, image_plot_with_labels_save
+import gc
 from GHSOM import GHSOM
 
 # モジュール検索パスに，ひとつ上の階層の絶対パスを追加
@@ -46,8 +50,6 @@ def read_data(filename):
         sample_genome_array = []
         for i in range(2, len(sample_genome), 3):
             one_data = [int(float(n)) for n in sample_genome[i].split()]
-            while len(one_data) != 144:
-                one_data.append(0)
             sample_genome_array.append(one_data)
         sample_genome_df = pd.DataFrame(sample_genome_array)
     f.close()
@@ -102,19 +104,20 @@ if __name__ == "__main__":
     print("number of digits: {}\n".format(n_digits))
     ghsom = GHSOM(
         input_dataset=data,
-        t1=0.1,
-        t2=0.0001,
+        t1=1,
+        t2=0.001,
         learning_rate=0.15,
         decay=0.95,
-        gaussian_sigma=3,
+        gaussian_sigma=4,
     )
 
     print("Training...")
     zero_unit = ghsom.train(
-        epochs_number=15,
+        epochs_number=1,
         seed=0,
-        min_dataset_size=10,
-        grow_maxiter=15,
+        dataset_percentage=0.50,
+        min_dataset_size=30,
+        grow_maxiter=5,
     )
 
     # f = open('ghsom.pkl','wb')
@@ -125,8 +128,9 @@ if __name__ == "__main__":
 
     # print(zero_unit)
     # 平均と標準偏差
-    # print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
-    # print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
+    print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
+    print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
+    print(f"階層数:{number_of_layes(zero_unit)}")
     # interactive_plot(zero_unit.child_map)
-    interactive_plot_with_labels(zero_unit.child_map, data, labels)
+    # interactive_plot_with_labels(zero_unit.child_map, data, labels)
     plt.show()

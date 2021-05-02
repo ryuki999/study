@@ -193,26 +193,37 @@ def image_plot_with_labels_save(gmap, dataset, labels, save_dir, parent_map="roo
     """
     # mapサイズ[1]:縦,[0]:横のリスト(ラベルを格納)
     mapping = [[list() for _ in range(gmap.map_shape()[1])] for _ in range(gmap.map_shape()[0])]
+    plot_labels = [[list() for _ in range(gmap.map_shape()[1])] for _ in range(gmap.map_shape()[0])]
 
-    for idx, label in tqdm(enumerate(labels)):
+    for idx, label in enumerate(labels):
         winner_neuron = gmap.winner_neuron(dataset[idx])[0][0]
         r, c = winner_neuron.position
         mapping[r][c].append(idx)
-    _num = "level {} --parent map {} --num of data {}".format(level, parent_map, len(labels))
+        plot_labels[r][c].append(label)
     
+    _num = f"level {level} --parent map {parent_map} --num of data {len(labels)}"
+
+    black_point_num = 0
+    for r in range(np.array(plot_labels).shape[0]):
+        for c in range(np.array(plot_labels).shape[1]):
+            # print(plot_label[r][c])
+            if len(list(set(plot_labels[r][c]))) != 1:
+                black_point_num += 1
+
     p = Pool(1)
     p.map(plot, [[__gmap_to_matrix(gmap, dataset, labels), save_dir, _num]])
     p.close()
     for i in range(gmap.map_shape()[0]):
         for j in range(gmap.map_shape()[1]):
             coords = (i,j)
+            print(parent_map, coords, len(mapping[i][j]))
             # 指定座標のみ抽出
             neuron = gmap.neurons[coords]
             current_map = parent_map + f"({i},{j})"
             if neuron.child_map is not None:
                 # 指定した座標以下のデータとラベルのindexを取得
                 assc = mapping[coords[0]][coords[1]]
-                image_plot_with_labels_save(
+                black_point_num += image_plot_with_labels_save(
                     neuron.child_map,
                     dataset=dataset[assc],
                     labels=labels[assc],
@@ -223,3 +234,5 @@ def image_plot_with_labels_save(gmap, dataset, labels, save_dir, parent_map="roo
                 )
     del gmap, dataset, labels, mapping, coords, neuron, current_map
     gc.collect() 
+
+    return black_point_num

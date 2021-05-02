@@ -47,8 +47,6 @@ def read_data(filename):
         sample_genome_array = []
         for i in range(2, len(sample_genome), 3):
             one_data = [int(float(n)) for n in sample_genome[i].split()]
-            while len(one_data) != 144:
-                one_data.append(0)
             sample_genome_array.append(one_data)
         sample_genome_df = pd.DataFrame(sample_genome_array)
     f.close()
@@ -73,57 +71,74 @@ if __name__ == "__main__":
     print("dataset length: {}".format(n_samples))
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
-    t1 = [1, 0.1, 0.01, 0.001]
-    t2 = [1, 0.1, 0.01, 0.001]
-    gaussian_sigma = [2, 3, 4, 5]
-    grow_maxiter = [1, 5, 10, 15, 20]
-    epochs = [1,5,10,15]
+
+    # t1 = [0.01, 0.001, 0.0001]
+    # t2 = [1, 0.1, 0.01, 0.0001]
+    # gaussian_sigma = [2, 3, 4, 5]
+    # grow_maxiter = [1, 5, 10, 15, 20]
+    # epochs = [1,5,10,15]
     lr = 0.15
     decay = 0.95
 
+    t1 = [0.01]
+    t2 = [0.0001]
+    gaussian_sigma = [3]
+    grow_maxiter = [10]
+    epochs = [10]
+
+    s = time.time()
+    print("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, マップの数, ニューロンの数, 黒点割合")
     for t1_i in t1:
         for t2_i in t2:
-            for gau_i in gaussian_sigma:
-                for gr_i in grow_maxiter:
+            if t1_i == 0.01 and t2_i == 0.0001:
+                for gau_i in gaussian_sigma:
                     for ep in epochs:
-                        start = time.time()
-                        dir = f"t1c{t1_i}-t2c{t2_i}-lr{lr}-decay{decay}-gau{gau_i}-ep{ep}-gr{t1_i}"
-                        path = f'./img/{dir}'
-                        if not os.path.exists(path):
-                            os.mkdir(path)
-                        print(dir)
-                        ghsom = GHSOM(
-                            input_dataset=data,
-                            t1=t1_i,
-                            t2=t2_i,
-                            learning_rate=lr,
-                            decay=decay,
-                            gaussian_sigma=gau_i,
-                        )
+                        for gr_i in grow_maxiter:
+                            start = time.time()
+                            dir = f"t1c{t1_i}-t2c{t2_i}-lr{lr}-decay{decay}-gau{gau_i}-ep{ep}-gr{gr_i}"
+                            path = f'./img/{dir}'
+                            if not os.path.exists(path):
+                                os.mkdir(path)
+                            ghsom = GHSOM(
+                                input_dataset=data,
+                                t1=t1_i,
+                                t2=t2_i,
+                                learning_rate=lr,
+                                decay=decay,
+                                gaussian_sigma=gau_i,
+                            )
 
-                        print("Training...")
-                        zero_unit = ghsom.train(
-                            epochs_number=ep,
-                            dataset_percentage=0.50,
-                            min_dataset_size=30,
-                            seed=0,
-                            grow_maxiter=gr_i,
-                        )
+                            print("Training...")
+                            zero_unit = ghsom.train(
+                                epochs_number=ep,
+                                dataset_percentage=0.50,
+                                min_dataset_size=30,
+                                seed=0,
+                                grow_maxiter=gr_i,
+                            )
 
-                        t = time.time() - start
+                            black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, path)
 
-                        print(f"Elapsed Time:{t}s")
+                            t = time.time() - start
+                            print(f"{dir}, {t1_i}, {t2_i}, {lr}, {decay}, {gau_i}, {ep}, {gr_i},", end="")
+                            # Elapsed Time[s]
+                            print(f"{np.round(t,4)},", end="")
+                            # (誤差平均, 誤差分散)
+                            print(f"{mean_data_centroid_activation(zero_unit, data)},", end="")
+                            # ニューロン使用率
+                            print(f"{np.round(dispersion_rate(zero_unit, data),4)},", end="")
+                            # マップの数
+                            print(f"{number_of_maps(zero_unit)},", end="")
+                            # ニューロンの数
+                            print(f"{number_of_neurons(zero_unit)},", end="")
+                            # print(zero_unit)
+                            # interactive_plot(zero_unit.child_map)
+                            # interactive_plot_with_labels(zero_unit.child_map, data, labels)
+                            print(np.round(black_point_num / number_of_neurons(zero_unit), 4))
+                            print("\n")
+                            # plt.show()
+                            del ghsom, zero_unit
+                            gc.collect()
 
-                        # 平均と標準偏差
-                        print(f"(誤差平均, 誤差分散):{mean_data_centroid_activation(zero_unit, data)}")
-                        print(f"ニューロン使用率:{dispersion_rate(zero_unit, data)}")
-                        print(f"マップの数:{number_of_maps(zero_unit)}")
-                        print(f"ニューロンの数:{number_of_neurons(zero_unit)}")
-                        print("\n")
-                        # print(zero_unit)
-                        # interactive_plot(zero_unit.child_map)
-                        # interactive_plot_with_labels(zero_unit.child_map, data, labels)
-                        image_plot_with_labels_save(zero_unit.child_map, data, labels, f"img/{dir}")
-                        # plt.show()
-                        del ghsom, zero_unit
-                        gc.collect()
+    total_t = time.time() - s
+    print(f"Total Time:{total_t}")

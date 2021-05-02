@@ -34,6 +34,29 @@ def __number_of_neurons(root):
             total_neurons += __number_of_neurons(neuron)
     return total_neurons
 
+# def number_of_layes(root, level=1):
+#     """
+#     GHSOMのlayer数を返す
+#     """
+#     max_level = 1
+#     #print(level)
+#     print(len(root.child_map.neurons.values()))
+#     # if len(root.child_map.neurons.values()) < 1:
+#     #    return level
+#     count = 0
+#     for neuron in root.child_map.neurons.values():
+#         if neuron.child_map is not None:
+#             p = number_of_layes(neuron, level=level+1)
+#             if max_level < p:
+#                 max_level = p
+#                 print(level, max_level, p)
+#          else:
+#             count += 1
+#     if level == 1:
+#         return max_level
+#     else:
+#         return max_level
+
 def number_of_maps(root):
     """
     GHSOMのmap数を返す
