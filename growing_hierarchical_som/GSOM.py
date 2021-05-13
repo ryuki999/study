@@ -39,6 +39,7 @@ class GSOM:
         _iter = 0
         can_grow = True
         while can_grow and (_iter < maxiter):
+            # 成長前にSOMの訓練
             self.__neurons_training(decay, epochs, initial_learning_rate, initial_gaussian_sigma,
                                     dataset_percentage, min_dataset_size, seed)
 
@@ -54,6 +55,7 @@ class GSOM:
     def __neurons_training(self, decay, epochs, learning_rate, sigma, dataset_percentage, min_dataset_size, seed):
         lr = learning_rate
         s = sigma
+        # iter使い方間違っているがepochのこと
         for iteration in range(epochs):
             for data in self.__training_data(seed, dataset_percentage, min_dataset_size):
                 self.__update_neurons(data, lr, s)
@@ -235,6 +237,8 @@ class GSOM:
 
     def __training_data(self, seed, dataset_percentage, min_size):
         dataset_size = len(self.__parent_dataset)
+        # 親マップから流れてきたデータ数がmin_sizeより小さいとき、dataset_size個のデータを返す
+        # 親マップから流れてきたデータ数がmin_sizeより大きいとき、dataset_size*dataset_percentage個のデータを返す
         if dataset_size <= min_size:
             iterator = range(dataset_size)
         else:

@@ -87,7 +87,7 @@ if __name__ == "__main__":
     epochs = [10]
 
     s = time.time()
-    print("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, マップの数, ニューロンの数, 黒点割合")
+    print("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, 階層数, マップ数, ニューロン数, 黒点割合")
     for t1_i in t1:
         for t2_i in t2:
             if t1_i == 0.01 and t2_i == 0.0001:
@@ -122,19 +122,21 @@ if __name__ == "__main__":
                             t = time.time() - start
                             print(f"{dir}, {t1_i}, {t2_i}, {lr}, {decay}, {gau_i}, {ep}, {gr_i},", end="")
                             # Elapsed Time[s]
-                            print(f"{np.round(t,4)},", end="")
+                            print(f"{np.round(t,3)},", end="")
                             # (誤差平均, 誤差分散)
                             print(f"{mean_data_centroid_activation(zero_unit, data)},", end="")
                             # ニューロン使用率
-                            print(f"{np.round(dispersion_rate(zero_unit, data),4)},", end="")
-                            # マップの数
+                            print(f"{np.round(dispersion_rate(zero_unit, data),3)},", end="")
+                            # 階層数
+                            print(f"{number_of_layes(zero_unit)}," end="")
+                            # マップ数
                             print(f"{number_of_maps(zero_unit)},", end="")
-                            # ニューロンの数
+                            # ニューロン数
                             print(f"{number_of_neurons(zero_unit)},", end="")
                             # print(zero_unit)
                             # interactive_plot(zero_unit.child_map)
                             # interactive_plot_with_labels(zero_unit.child_map, data, labels)
-                            print(np.round(black_point_num / number_of_neurons(zero_unit), 4))
+                            print(np.round(black_point_num / number_of_neurons(zero_unit), 3))
                             print("\n")
                             # plt.show()
                             del ghsom, zero_unit

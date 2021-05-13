@@ -36,8 +36,10 @@ class GHSOM:
         ])
         # bar.update(0)
         while not neuron_queue.empty():
+            # neuron_queueのサイズかプロセス数の小さい方で並列処理
             size = min(neuron_queue.qsize(), pool._processes)
             gmaps = dict()
+            # マップの成長:初回neuron=zero_unit
             for _ in range(size):
                 neuron = neuron_queue.get()
                 gmaps[neuron] = (pool.apply_async(neuron.child_map.train, (
@@ -51,10 +53,11 @@ class GHSOM:
                     grow_maxiter
                 )))
                 active_dataset -= len(neuron.input_dataset)
-
+            # マップの階層化
             for neuron in gmaps:
                 gmap = gmaps[neuron].get()
                 neuron.child_map = gmap
+                # 階層化させるユニットを選択
                 neurons_to_expand = filter(lambda _neuron: _neuron.needs_child_map(), gmap.neurons.values())
                 for _neuron in neurons_to_expand:
                     _neuron.child_map = self.__build_new_GSOM(
@@ -62,7 +65,7 @@ class GHSOM:
                         _neuron.input_dataset,
                         self.__new_map_weights(_neuron.position, gmap.weights_map[0])
                     )
-
+                    # 作成したマップをqueueに追加→次のマップの成長は生成したもののみ
                     neuron_queue.put(_neuron)
 
                     active_dataset += len(_neuron.input_dataset)
@@ -106,9 +109,13 @@ class GHSOM:
         |      |      |      |         |(1,0) |(1,1) |
         |      |      |      |         |______|______|
         |______|______|______|
+        args:
+            parent_postion:階層化元のニューロンの座標
+            weights_map:階層化元のマップの全体の重み
         """
 
         child_weights = np.zeros(shape=(2, 2, self.__input_dimension))
+        # 親マップの親ニューロンの4方向のユニットを抽出
         stencil = self.__generate_kernel_stencil(parent_position)
         for child_position in np.ndindex(2, 2):
             child_position = np.asarray(child_position)

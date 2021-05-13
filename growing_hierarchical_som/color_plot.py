@@ -1,5 +1,4 @@
-from collections import OrderedDict
-
+from collections import OrderedDict, defaultdict
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import numpy as np
@@ -179,7 +178,7 @@ def plot(args):
     plt.close('all')
     gc.collect()
 
-def image_plot_with_labels_save(gmap, dataset, labels, save_dir, parent_map="root", num="root", level=1):
+def image_plot_with_labels_save(gmap, dataset, labels, head, save_dir=None, data_property={}, parent_map="root", num="root", level=1):
     """GHSOMのマップをラベルとインタラクティブなプロット
 
     Args:
@@ -200,6 +199,11 @@ def image_plot_with_labels_save(gmap, dataset, labels, save_dir, parent_map="roo
         r, c = winner_neuron.position
         mapping[r][c].append(idx)
         plot_labels[r][c].append(label)
+        key = " ".join([str(i) for i in head[idx]])
+        if key not in data_property:
+            data_property[key] = []
+        data_property[key].append(f"{level} {parent_map} ({r},{c})")
+        # print(" ".join(head.iloc[idx,:].values), f"階層{level} 親マップ{parent_map} 座標{r} {c}")
     
     _num = f"level {level} --parent map {parent_map} --num of data {len(labels)}"
 
@@ -210,29 +214,36 @@ def image_plot_with_labels_save(gmap, dataset, labels, save_dir, parent_map="roo
             if len(list(set(plot_labels[r][c]))) != 1:
                 black_point_num += 1
 
-    p = Pool(1)
-    p.map(plot, [[__gmap_to_matrix(gmap, dataset, labels), save_dir, _num]])
-    p.close()
+    if save_dir:
+        p = Pool(1)
+        p.map(plot, [[__gmap_to_matrix(gmap, dataset, labels), save_dir, _num]])
+        p.close()
+
     for i in range(gmap.map_shape()[0]):
         for j in range(gmap.map_shape()[1]):
             coords = (i,j)
-            print(parent_map, coords, len(mapping[i][j]))
+            # print(parent_map, coords, len(mapping[i][j]))
             # 指定座標のみ抽出
             neuron = gmap.neurons[coords]
             current_map = parent_map + f"({i},{j})"
             if neuron.child_map is not None:
                 # 指定した座標以下のデータとラベルのindexを取得
                 assc = mapping[coords[0]][coords[1]]
-                black_point_num += image_plot_with_labels_save(
+                data_property, _black_point_num = image_plot_with_labels_save(
                     neuron.child_map,
                     dataset=dataset[assc],
                     labels=labels[assc],
+                    head=head[assc],
                     save_dir=save_dir,
+                    data_property=data_property,
                     parent_map=current_map,
                     num=str(coords),
                     level=level + 1,
                 )
+
+                black_point_num += _black_point_num
+
     del gmap, dataset, labels, mapping, coords, neuron, current_map
     gc.collect() 
 
-    return black_point_num
+    return data_property, black_point_num

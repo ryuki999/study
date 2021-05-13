@@ -1,6 +1,15 @@
 """
 test.py
-test用のプログラム
+SARS-CoV-2のL,S型に限定してGHSOMを学習させるプログラム
+python l_s_ghsom.py input_data model_output_dir
+
+ex)
+python l_s_ghsom.py /mnt/mount_point/furukawa_data/To_Furukawa_210318/all_data_odd_penta /mnt/mount_point/penta/
+
+args:
+    input_data : 入力データのファイル
+    model_output_dir : 画像ファイルとモデル(.pkl)を保存するフォルダ
+
 """
 
 from sklearn.datasets import load_digits
@@ -49,8 +58,6 @@ def read_data(filename):
         sample_genome_array = []
         for i in range(2, len(sample_genome), 3):
             one_data = [int(float(n)) for n in sample_genome[i].split()]
-            while len(one_data) != 144:
-                one_data.append(0)
             sample_genome_array.append(one_data)
         sample_genome_df = pd.DataFrame(sample_genome_array)
     f.close()
@@ -58,28 +65,6 @@ def read_data(filename):
 
 
 if __name__ == "__main__":
-    # digisデータ
-    digits = load_digits()
-    # data = digits.data
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(digits.target))
-    # labels = digits.target
-
-    # sample_genomeデータ
-    # folder = sys.argv[1]
-    # df0 = read_data(f"{folder}/Bacteria.frq")
-    # df0["label"] = 0
-    # df1 = read_data(f"{folder}/Eukaryote.frq")
-    # df1["label"] = 1
-    # df2 = read_data(f"{folder}/Virus.frq")
-    # df2["label"] = 2
-    # df_concat = pd.concat([df0, df1, df2])
-
-    # labels = np.array(df_concat["label"])
-    # data = np.array(df_concat.drop(columns=["label"]))
-    # n_samples, n_features = data.shape
-    # n_digits = len(np.unique(labels))
-
     # Sars-Cov2データ
     input_data = sys.argv[1]
     model_output_dir = sys.argv[2]
@@ -88,12 +73,18 @@ if __name__ == "__main__":
     header, feature = fasta_to_df(input_data, N, ALL_DATA_HEADER_COLUMNS, N_BASE
     )
     df = all_data_df_to_arange_df(header, feature)
-    df1 = df[(df["clade"] == "L") | (df["clade"] == "S")]
-    df1["clade"] = df1["clade"].map(
-        {"L": 0, "S": 1}
+    # df1 = df[(df["clade"] == "L") | (df["clade"] == "S")]
+    # df1["clade_num"] = df1["clade"].map(
+    #     {"L": 0, "S": 1}
+    # )
+    df1 = df[df["clade"] == "S"]
+    df1["clade_num"] = df1["clade"].map(
+        {"S": 0}
     )
-    labels = np.array(df1["clade"])
+    labels = np.array(df1["clade_num"])
     data = np.array(df1[N_BASE])
+    head = df1.drop(columns=N_BASE).values
+    head_columns = df1.drop(columns=N_BASE).columns
     n_samples, n_features = data.shape
     n_digits = len(np.unique(labels))
 
@@ -106,15 +97,14 @@ if __name__ == "__main__":
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
 
-    t1 = [0.01, 0.001]
-    t2 = [0.01, 0.001]
+    t1 = [0.1]
+    t2 = [0.001, 0.0001]
     gaussian_sigma = [3]
     grow_maxiter = [20]
     epochs = [15]
     lr = 0.15
     decay = 0.95
 
-    print("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, マップの数, ニューロンの数, 黒点割合")
     for t1_i in t1:
         for t2_i in t2:
             for gau_i in gaussian_sigma:
@@ -125,47 +115,69 @@ if __name__ == "__main__":
                         path = f'{model_output_dir}/{dir}'
                         if not os.path.exists(path):
                             os.mkdir(path)
-                        ghsom = GHSOM(
-                            input_dataset=data,
-                            t1=t1_i,
-                            t2=t2_i,
-                            learning_rate=lr,
-                            decay=decay,
-                            gaussian_sigma=gau_i,
-                        )
+                        if not os.path.exists(f"{model_output_dir}/{dir}.pkl"):
+                            ghsom = GHSOM(
+                                input_dataset=data,
+                                t1=t1_i,
+                                t2=t2_i,
+                                learning_rate=lr,
+                                decay=decay,
+                                gaussian_sigma=gau_i,
+                            )
 
-                        print("Training...")
-                        zero_unit = ghsom.train(
-                            epochs_number=ep,
-                            dataset_percentage=0.50,
-                            min_dataset_size=30,
-                            seed=0,
-                            grow_maxiter=gr_i,
-                        )
-                        f = open(f"{model_output_dir}/{dir}.pkl",'wb')
-                        pickle.dump(zero_unit,f)
+                            print("Training...")
+                            zero_unit = ghsom.train(
+                                epochs_number=ep,
+                                dataset_percentage=0.50,
+                                min_dataset_size=30,
+                                seed=0,
+                                grow_maxiter=gr_i,
+                            )
+                            f = open(f"{model_output_dir}/{dir}.pkl",'wb')
+                            pickle.dump(zero_unit,f)
+                            f.close
                         f = open(f"{model_output_dir}/{dir}.pkl",'rb')
-                        zerp_unit = pickle.load(f)
+                        zero_unit = pickle.load(f)
                         f.close
 
-                        black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, path)
+                        with open(f"{model_output_dir}/{dir}.out", "w+") as f:
+                            f.write(f"input_data:{input_data}\n")
+                            f.write(f"model_output:{model_output_dir}\n")
+                            f.write("dataset length: {}\n".format(n_samples))
+                            f.write("features per example: {}\n".format(n_features))
+                            f.write("number of digits: {}\n".format(n_digits))
+                            f.write("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, 階層数, マップ数, ニューロン数, 黒点割合\n")
+                            # data_property, black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, head)
+                            data_property, black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, head, path)                 
+                            t = time.time() - start
+                            f.write(f"{dir}, {t1_i}, {t2_i}, {lr}, {decay}, {gau_i}, {ep}, {gr_i},")
+                            # Elapsed Time[s]
+                            f.write(f"{np.round(t,4)},")
+                            # (誤差平均, 誤差分散)
+                            f.write(f"{mean_data_centroid_activation(zero_unit, data)},")
+                            # ニューロン使用率
+                            f.write(f"{np.round(dispersion_rate(zero_unit, data),4)},")
+                            # 階層数
+                            num_layers = number_of_layes(zero_unit)
+                            f.write(f"{num_layers},")
+                            # マップ数
+                            f.write(f"{number_of_maps(zero_unit)},")
+                            # ニューロン数
+                            f.write(f"{number_of_neurons(zero_unit)},")
+                            # 黒点割合
+                            f.write(f"{np.round(black_point_num / number_of_neurons(zero_unit), 4)}")
+                            f.write("\n")
 
-                        t = time.time() - start
-                        print(f"{dir}, {t1_i}, {t2_i}, {lr}, {decay}, {gau_i}, {ep}, {gr_i},", end="")
-                        # Elapsed Time[s]
-                        print(f"{np.round(t,4)},", end="")
-                        # (誤差平均, 誤差分散)
-                        print(f"{mean_data_centroid_activation(zero_unit, data)},", end="")
-                        # ニューロン使用率
-                        print(f"{np.round(dispersion_rate(zero_unit, data),4)},", end="")
-                        # マップの数
-                        print(f"{number_of_maps(zero_unit)},", end="")
-                        # ニューロンの数
-                        print(f"{number_of_neurons(zero_unit)},", end="")
-                        # 黒点割合
-                        print(np.round(black_point_num / number_of_neurons(zero_unit), 4))
-                        print("\n")
-
-
-                        del ghsom, zero_unit
+                            # print("head id continent country city host clade_head date")
+                            f.write(" ".join([str(i) for i in head_columns]) + f" layer {' '.join([str(i) for i in range(num_layers)])} (y,x)\n")
+                            for i,v in data_property.items():
+                                f.write(f"{i} {v[-1].split(' ')[0]} ")
+                                for vi in range(num_layers):
+                                    if vi < len(v):
+                                        f.write(f"{v[vi].split(' ')[1]} ")
+                                    else:
+                                        f.write("None")
+                                f.write(f"{v[-1].split(' ')[2]}\n")
+                        f.close()
+                        del zero_unit
                         gc.collect()
