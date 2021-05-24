@@ -15,7 +15,9 @@ color = [
     "lime",
     "blue",
     "fuchsia",
+    "amethyst",
 ]
+
 rgb = {
     "bright red": [229, 43, 80],
     "pure orange": [255, 191, 0],
@@ -25,9 +27,11 @@ rgb = {
     "lime": [0, 255, 0],
     "blue": [0, 0, 255],
     "fuchsia": [255, 0, 255],
+    "amethyst": [153, 102, 204],
     "black": [0, 0, 0],
     "white": [255, 255, 255],
 }
+
 colors = [
     "#E52B50",
     "#FFBF00",

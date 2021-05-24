@@ -26,6 +26,7 @@ from matplotlib import pyplot as plt
 from ghsom_describe import *
 from color_plot import interactive_plot_with_labels, image_plot_with_labels_save
 import gc
+from sklearn.preprocessing import LabelEncoder
 from GHSOM import GHSOM
 
 # モジュール検索パスに，ひとつ上の階層の絶対パスを追加
@@ -73,31 +74,29 @@ if __name__ == "__main__":
     header, feature = fasta_to_df(input_data, N, ALL_DATA_HEADER_COLUMNS, N_BASE
     )
     df = all_data_df_to_arange_df(header, feature)
-    # df1 = df[(df["clade"] == "L") | (df["clade"] == "S")]
-    # df1["clade_num"] = df1["clade"].map(
-    #     {"L": 0, "S": 1}
-    # )
-    df1 = df[df["clade"] == "S"]
-    df1["clade_num"] = df1["clade"].map(
-        {"S": 0}
-    )
-    labels = np.array(df1["clade_num"])
-    data = np.array(df1[N_BASE])
-    head = df1.drop(columns=N_BASE).values
-    head_columns = df1.drop(columns=N_BASE).columns
+
+    # df = df[(df["clade"] == "L") | (df["clade"] == "S")]
+
+    le = LabelEncoder()
+    df['clade_num'] = le.fit_transform(df['clade'].values)
+    
+    labels = np.array(df["clade_num"])
+    data = np.array(df[N_BASE])
+    head = df.drop(columns=N_BASE).values
+    head_columns = df.drop(columns=N_BASE).columns
     n_samples, n_features = data.shape
     n_digits = len(np.unique(labels))
 
     start = time.time()
     
-    print(df1)
+    print(df)
     print(data)
     print(labels)
     print("dataset length: {}".format(n_samples))
     print("features per example: {}".format(n_features))
     print("number of digits: {}\n".format(n_digits))
 
-    t1 = [0.1]
+    t1 = [0.1, 0.01, 0.001]
     t2 = [0.001, 0.0001]
     gaussian_sigma = [3]
     grow_maxiter = [20]
@@ -148,7 +147,7 @@ if __name__ == "__main__":
                             f.write("number of digits: {}\n".format(n_digits))
                             f.write("id, t1, t2, lr, decay, gau, ep, gr, Elapsed Time, (誤差平均, 誤差分散), ニューロン使用率, 階層数, マップ数, ニューロン数, 黒点割合\n")
                             # data_property, black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, head)
-                            data_property, black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, head, path)                 
+                            data_property, black_point_num = image_plot_with_labels_save(zero_unit.child_map, data, labels, head, path, data_property={})                 
                             t = time.time() - start
                             f.write(f"{dir}, {t1_i}, {t2_i}, {lr}, {decay}, {gau_i}, {ep}, {gr_i},")
                             # Elapsed Time[s]
@@ -176,8 +175,8 @@ if __name__ == "__main__":
                                     if vi < len(v):
                                         f.write(f"{v[vi].split(' ')[1]} ")
                                     else:
-                                        f.write("None")
+                                        f.write("None ")
                                 f.write(f"{v[-1].split(' ')[2]}\n")
                         f.close()
-                        del zero_unit
+                        del zero_unit, data_property
                         gc.collect()
