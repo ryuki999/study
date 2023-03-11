@@ -14,13 +14,10 @@ Args:
 -研究室サーバ133.35.159.13
 
 ・5連続オッズ比生成の実行時間
--Elapsed time:176.01968598365784 s
--3分
-
+-Elapsed time:176.0197s(3分)
 
 ・8連続オッズ比生成の実行時間
--Elapsed time:1099.6736345291138 s
--18分
+-Elapsed time:1099.674s(18分)
 -ファイルサイズ47Gくらいあった:+1
 """
 
@@ -35,11 +32,11 @@ import numpy as np
 import pandas
 from tqdm import tqdm
 
-from penta_continuous import N_BASE
+# from penta_continuous import N_BASE
 
 N = 5
 BASE = ["A", "T", "G", "C"]
-# N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
+N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
 
 
 def seq_to_odd(line):
