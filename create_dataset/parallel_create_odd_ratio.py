@@ -27,16 +27,19 @@ Args:
 import itertools
 import multiprocessing
 import sys
+import time
 from collections import defaultdict
 from multiprocessing import Pool
-import time
+
 import numpy as np
 import pandas
 from tqdm import tqdm
 
-N = 2
+from penta_continuous import N_BASE
+
+N = 5
 BASE = ["A", "T", "G", "C"]
-N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
+# N_BASE = ["".join(i) for i in list(itertools.product(BASE, repeat=N))]
 
 
 def seq_to_odd(line):
@@ -49,7 +52,7 @@ def seq_to_odd(line):
     header, seq = line.split("\n")
     n_continuous_base_odd = calculate_odd_ratio(seq)
     return (
-        header + "\n" + " ".join([str(n_continuous_base_odd[b]) for b in N_BASE]) + "\n"
+        header + "\n" + header + "\n" + " ".join([str(n_continuous_base_odd[b]) for b in N_BASE]) + "\n"
     )
 
 def calculate_odd_ratio(seq):
@@ -66,12 +69,17 @@ def calculate_odd_ratio(seq):
     n_base = defaultdict(int)
     # 全ての塩基配列を一塩基ずつ読み込み
     for i in range(len(seq)):
-        # 1塩基の頻度計算
-        one_base[seq[i]] += 1
+        if seq[i] in BASE:
+            # 1塩基の頻度計算
+            one_base[seq[i]] += 1
         # 連続塩基の頻度計算
         if i + N < len(seq):
-            n_base[seq[i : i + N]] += 1
-
+            flag = 0
+            for j in seq[i:i+N]:
+                if j not in BASE:
+                    flag = 1
+            if flag != 1:
+                n_base[seq[i : i + N]] += 1
     total_n_continuous_base_freq = np.sum(list(n_base.values()))
     total_one_base_freq = np.sum(list(one_base.values()))
 
@@ -99,12 +107,9 @@ def parallel_calculate(seq_array):
 
     return seq_array
 
-def main():
+def main(filename, output_filename, number_of_simultaneous_calculations):
     seq_array = []
-    filename = sys.argv[1]
-    output_filename = sys.argv[2]
-    # 同時に計算する配列数
-    number_of_simultaneous_calculations = sys.argv[3]
+    seq = None
 
     print(f"create {N} continuous base odd ratio")
     print(f"input_data:{filename}")
@@ -115,7 +120,7 @@ def main():
         with open(output_filename, "w", encoding="utf-8") as w:
             for line in tqdm(r.readlines()):
                 if ">" in line:
-                    if "seq" in locals():
+                    if seq is not None:
                         seq_array.append(seq)
                     seq = line
                 else:
@@ -126,6 +131,7 @@ def main():
                     for line in seq_array:
                         w.write(line)
                     seq_array = []
+
             # 端数部分の配列を計算・出力
             seq_array.append(seq)
             seq_array = parallel_calculate(seq_array)
@@ -135,4 +141,9 @@ def main():
     print(f"Elapsed time:{t} s")
 
 if __name__ in "__main__":
-    main()
+    filename = sys.argv[1]
+    output_filename = sys.argv[2]
+    # 同時に計算する配列数
+    number_of_simultaneous_calculations = sys.argv[3]
+    
+    main(filename, output_filename, number_of_simultaneous_calculations)

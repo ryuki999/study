@@ -16,6 +16,7 @@ color = [
     "blue",
     "fuchsia",
     "amethyst",
+    "bronze"
 ]
 
 rgb = {
@@ -28,6 +29,7 @@ rgb = {
     "blue": [0, 0, 255],
     "fuchsia": [255, 0, 255],
     "amethyst": [153, 102, 204],
+    "bronze":[205, 127, 50],
     "black": [0, 0, 0],
     "white": [255, 255, 255],
 }
@@ -251,3 +253,56 @@ def image_plot_with_labels_save(gmap, dataset, labels, head, save_dir=None, data
     gc.collect() 
 
     return data_property, black_point_num
+
+def image_plot(gmap, dataset, header, data_property={}, parent_map="root", num="root", level=1):
+    """GHSOMのマップをラベルとインタラクティブなプロット
+
+    Args:
+    gmap (Neuron): Neuronオブジェクト
+    dataset(numpy): 現在のmap以下のdataset
+    parent_map: 親の階層のmap
+    num: 座標
+    level: 階層レベル
+    """
+    # mapサイズ[1]:縦,[0]:横のリスト(ラベルを格納)
+    mapping = [[list() for _ in range(gmap.map_shape()[1])] for _ in range(gmap.map_shape()[0])]
+    plot_labels = [[list() for _ in range(gmap.map_shape()[1])] for _ in range(gmap.map_shape()[0])]
+
+    for idx, label in enumerate(dataset):
+        winner_neuron = gmap.winner_neuron(dataset[idx])[0][0]
+        r, c = winner_neuron.position
+        mapping[r][c].append(idx)
+        
+        key = header[idx][0]
+        if key not in data_property:
+            data_property[key] = []
+        data_property[key].append(f"{level} {parent_map} ({r},{c})")
+        # print(" ".join(head.iloc[idx,:].values), f"階層{level} 親マップ{parent_map} 座標{r} {c}")
+    
+    _num = f"level {level} --parent map {parent_map} --num of data {len(dataset)}"
+
+    for i in range(gmap.map_shape()[0]):
+        for j in range(gmap.map_shape()[1]):
+            coords = (i,j)
+            # print(parent_map, coords, len(mapping[i][j]))
+            # 指定座標のみ抽出
+            neuron = gmap.neurons[coords]
+            current_map = parent_map + f"({i},{j})"
+            if neuron.child_map is not None:
+                # 指定した座標以下のデータとラベルのindexを取得
+                assc = mapping[coords[0]][coords[1]]
+                data_property = image_plot(
+                    neuron.child_map,
+                    dataset=dataset[assc],
+                    header=header[assc],
+                    data_property=data_property,
+                    parent_map=current_map,
+                    num=str(coords),
+                    level=level + 1,
+                )
+
+
+    del gmap, dataset, mapping, coords, neuron, current_map
+    gc.collect() 
+
+    return data_property

@@ -25,7 +25,7 @@ class GHSOM:
         neuron_queue = Queue()
         neuron_queue.put(zero_unit)
 
-        pool = Pool(processes=None)
+        #pool = Pool(processes=None)
 
         active_dataset = len(zero_unit.input_dataset)
 
@@ -36,6 +36,7 @@ class GHSOM:
         ])
         # bar.update(0)
         while not neuron_queue.empty():
+            pool = Pool(processes=20)
             # neuron_queueのサイズかプロセス数の小さい方で並列処理
             size = min(neuron_queue.qsize(), pool._processes)
             gmaps = dict()
@@ -53,6 +54,7 @@ class GHSOM:
                     grow_maxiter
                 )))
                 active_dataset -= len(neuron.input_dataset)
+            pool.close()
             # マップの階層化
             for neuron in gmaps:
                 gmap = gmaps[neuron].get()
@@ -70,8 +72,7 @@ class GHSOM:
 
                     active_dataset += len(_neuron.input_dataset)
 
-            # bar.update(bar.max_value - active_dataset)
-        pool.close()
+            # bar.update(bar.max_value - active_dataset:
         return zero_unit
 
     def __init_zero_unit(self, seed):
