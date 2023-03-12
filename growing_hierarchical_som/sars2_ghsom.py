@@ -106,14 +106,23 @@ if __name__ == "__main__":
     print("features per example: {}".format(n_features))
     # print("number of digits: {}\n".format(n_digits))
 
-    t1 = [0.1, 0.01, 0.001]
-    t2 = [0.001, 0.0001]
-    gaussian_sigma = [3]
-    grow_maxiter = [20]
-    epochs = [15]
+    # t1 = [0.1, 0.01, 0.001]
+    # t2 = [0.001, 0.0001]
+    # gaussian_sigma = [3]
+    # grow_maxiter = [20]
+    # epochs = [15]
+    # lr = 0.15
+    # decay = 0.95
+
     lr = 0.15
     decay = 0.95
 
+    t1 = [0.01]
+    t2 = [0.0001]
+    gaussian_sigma = [3]
+    grow_maxiter = [10]
+    epochs = [10]
+    
     for t1_i in t1:
         for t2_i in t2:
             for gau_i in gaussian_sigma:
