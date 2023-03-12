@@ -3,27 +3,53 @@
 ## growing_hierarchical_som
 成長する階層型自己組織化マップ(Growing Hierarchical Self-Organizing Map)の開発用フォルダ
 
+GHSOMの実装は以下のリポジトリのものを採用しており、これを可視化するプログラムをした
+Github: https://github.com/enricivi/growing_hierarchical_som
+
+
 ### ファイル構成
 ```
 .
 ├── GHSOM.py
 ├── GSOM.py
-├── all_clade_ghsom_plot_delta.py # 唯一のパラメータで任意(今回は新型コロナ)のデータに対してGHSOM解析
-├── color_plot.py 
-├── ghsom_describe.py # GHSOMの統計量
-├── image_plot.py
+├── color_plot.py
+├── ghsom_describe.py # GHSOMの統計量計算間数群
+├── model
+│   └── t1c0.1-t2c0.01-lr0.15-decay0.95-gau3-ep10-gr10.pkl
 ├── neuron
 │   ├── __init__.py
 │   ├── neuron.py
 │   └── neuron_builder.py
-├── param_test.py # 複数のパラメータでサンプルデータに対してGHSOM解析
-├── sars2_ghsom.py # 複数のパラメータで任意(今回は新型コロナ)のデータに対してGHSOM解析
+├── output
+│   └── out1.txt
+├── plot_ghsom.py # 唯一のパラメータで任意(今回は新型コロナ)のデータに対してGHSOM解析
+├── sample_data # サンプル入力データ
+│   ├── Bacteria.frq
+│   ├── Eukaryote.frq
+│   ├── Virus.frq
+│   └── input.dat
+└── train_ghsom.py # 複数のパラメータで任意(今回は新型コロナ)のデータに対してGHSOM解析
+```
+
+### 使用環境構築
+実行環境は元のGHSOMの開発環境と同じく、以下が必要となる.
+```
+Python 3.6.5
+progressbar2==3.37.1
 ```
 
 ### 使用方法
+以下の順に実行すると、GHSOMの可視化結果と、入力データのGHSOMへのPLOT結果が出力される.
+```
+python train_ghsom.py sample_data/input.dat model
+python plot_ghsom.py model/t1c0.1-t2c0.01-lr0.15-decay0.95-gau3-ep10-gr10.pkl sample_data/input.dat output/out1.txt
+```
 
-```
-```
+* 準備するもの
+    * input data: sample_dataフォルダ以下のような形式
+* 生成物
+    * model
+    * output/out.txt
 
 
 ## create_dataset
