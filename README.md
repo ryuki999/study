@@ -3,7 +3,9 @@
 ## growing_hierarchical_som
 成長する階層型自己組織化マップ(Growing Hierarchical Self-Organizing Map)の開発用フォルダ
 
-GHSOMの実装は以下のリポジトリのものを流用しており、これを可視化するプログラムを主に開発した
+GHSOMの実装は以下のリポジトリのものを流用しており、解析に適する形の出力ファイルを作成するプログラムを主に開発した.
+※GHSOMをnetworkxとpygraphを使って、ネットワーク図の形で可視化するプログラムの作成も行なっていたが、どこかに消えてしまった.今後、可視化を検討する際にはcytoscapeなどのネットワーク可視化ツールを使う想定で、結果出力などを行うと良いかもしれない.
+
 Github: https://github.com/enricivi/growing_hierarchical_som
 
 
@@ -39,7 +41,7 @@ progressbar2==3.37.1
 ```
 
 ### 使用方法
-以下の順に実行すると、GHSOMの可視化結果と、入力データのGHSOMへのPLOT結果が出力される.
+以下の順に実行すると、入力データのGHSOMへのPLOT結果が出力される.
 ```
 python train_ghsom.py sample_data/input.dat model
 python plot_ghsom.py model/t1c0.1-t2c0.01-lr0.15-decay0.95-gau3-ep10-gr10.pkl sample_data/input.dat output/out1.txt
