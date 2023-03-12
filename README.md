@@ -3,7 +3,7 @@
 ## growing_hierarchical_som
 成長する階層型自己組織化マップ(Growing Hierarchical Self-Organizing Map)の開発用フォルダ
 
-GHSOMの実装は以下のリポジトリのものを採用しており、これを可視化するプログラムをした
+GHSOMの実装は以下のリポジトリのものを流用しており、これを可視化するプログラムを主に開発した
 Github: https://github.com/enricivi/growing_hierarchical_som
 
 
