@@ -1,15 +1,14 @@
-"""
-test.py
-SARS-CoV-2のL,S型に限定してGHSOMを学習させるプログラム
-python l_s_ghsom.py input_data model_output_dir
+"""plot_ghsom.py
+任意のデータを学習済みのGHSOMに分類するプログラム
+python plot_ghsom.py model input_data output_file
 
 ex)
-python l_s_ghsom.py /mnt/mount_point/furukawa_data/To_Furukawa_210318/all_data_odd_penta /mnt/mount_point/penta/
+python plot_ghsom.py ~/study/growing_hierarchical_som/model/model.pkl sample_data/input.dat output/out.txt 
 
 args:
+    model_name : modelまでのPath
     input_data : 入力データのファイル
-    model_output_dir : 画像ファイルとモデル(.pkl)を保存するフォルダ
-
+    output_file: プロットファイルの保存先Path
 """
 
 from sklearn.datasets import load_digits
@@ -26,14 +25,7 @@ from matplotlib import pyplot as plt
 from ghsom_describe import *
 from color_plot import interactive_plot_with_labels, image_plot
 import gc
-from sklearn.preprocessing import LabelEncoder
 from GHSOM import GHSOM
-
-# モジュール検索パスに，ひとつ上の階層の絶対パスを追加
-sys.path.append("..")
-
-from create_dataset.fasta_to_df import all_data_df_to_arange_df, fasta_to_df
-
 
 if __name__ == "__main__":
     # Sars-Cov2データ
