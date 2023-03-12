@@ -59,7 +59,6 @@ python plot_ghsom.py model/t1c0.1-t2c0.01-lr0.15-decay0.95-gau3-ep10-gr10.pkl sa
 ```
 .
 ├── create_odd_ratio.py # 連続塩基頻度のオッズ比を作成するプログラム(シングルコア)
-├── fasta_to_df.py # 塩基頻度データおよびメタデータ読み込みに関する関数群
 └── parallel_create_odd_ratio.py # 連続塩基頻度のオッズ比を作成するプログラム(マルチコア,並列計算)
 ```
 
